@@ -11,23 +11,23 @@ requires to work. In a normal template you must check if variables are set and/o
 Take this example:
 
 ```blade
-    <?php
+<?php
+
+if(!isset($type))
+{
+    $type = 'boxed';
+}
+
+?>
+<div class="component component-{{ $type }}">
+    @if($type == 'big')
+        <h1 class="component-title">{{ $object->title }}</h1>
+    @endif
     
-    if(!isset($type))
-    {
-        $type = 'boxed';
-    }
-    
-    ?>
-    <div class="component component-{{ $type }}">
-        @if($type == 'big')
-            <h1 class="component-title">{{ $object->title }}</h1>
-        @endif
-        
-        <div class="component-content component-content-{{ $size ?? 'medium' }}">
-            {{ $object->content }}
-        </h1>
-    </div>
+    <div class="component-content component-content-{{ $size ?? 'medium' }}">
+        {{ $object->content }}
+    </h1>
+</div>
 ``` 
 
 You must check if some variables are defined and set default values for some others. A colleague who has not worked with 
@@ -43,16 +43,16 @@ this information can be quite difficult. To solve these problems, this package a
 define the variables expected by the view:
 
 ```blade
-    @expects(\App\Object $object, string $type, string $size = 'medium')
-    <div class="component component-{{ $type }}">
-        @if($type == 'big')
-            <h1 class="component-title">{{ $object->title }}</h1>
-        @endif
-        
-        <div class="component-content component-content-{{ $size' }}">
-            {{ $object->content }}
-        </h1>
-    </div>
+@expects(\App\Object $object, string $type, string $size = 'medium')
+<div class="component component-{{ $type }}">
+    @if($type == 'big')
+        <h1 class="component-title">{{ $object->title }}</h1>
+    @endif
+    
+    <div class="component-content component-content-{{ $size' }}">
+        {{ $object->content }}
+    </h1>
+</div>
 ```
 
 This will force `$object` to be defined as a `\App\Object` instance, `$type` as a string and `$size` will take the
@@ -77,17 +77,17 @@ This is translated in simple PHP conditionals placed in the compiled template.
 Just install using `composer` and Laravel will load it automagically:
 
 ```bash
-    composer require vaites/laravel-blade-expects
+composer require vaites/laravel-blade-expects
 ```
 
 If you don't want to use the [package auto-discovery](https://medium.com/@taylorotwell/package-auto-discovery-in-laravel-5-5-ea9e3ab20518)
 you will need to add this to the service providers in `config/app.php`:
 
 ```php
-    'providers' => [
-	    // ...
-        \Vaites\Laravel\BladeExpects\BladeExpectsServiceProvider::class,
-    ]
+'providers' => [
+    // ...
+    \Vaites\Laravel\BladeExpects\BladeExpectsServiceProvider::class,
+]
 ```
 
 ## PhpStorm integration
