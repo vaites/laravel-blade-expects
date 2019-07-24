@@ -72,6 +72,24 @@ sets the required type and and exception is thrown if not matches (optional)
 
 This is translated in simple PHP conditionals placed in the compiled template.
 
+## Installation
+
+Just install using `composer` and Laravel will load it automagically:
+
+```bash
+    composer require vaites/laravel-blade-expects
+```
+
+If you don't want to use the [package auto-discovery](https://medium.com/@taylorotwell/package-auto-discovery-in-laravel-5-5-ea9e3ab20518)
+you will need to add this to the service providers in `config/app.php`:
+
+```php
+    'providers' => [
+	    // ...
+        \Vaites\Laravel\BladeExpects\BladeExpectsServiceProvider::class,
+    ]
+```
+
 ## PhpStorm integration
 
 The PhpStorm IDE can recognize the custom Blade directive if is set in *File > Settings > Languages & Frameworks > PHP >
