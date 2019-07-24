@@ -1,3 +1,7 @@
+[![Current release](https://img.shields.io/github/release/vaites/laravel-blade-expects.svg)](https://github.com/vaites/laravel-blade-expects/releases/latest)
+[![Package at Packagist](https://img.shields.io/packagist/dt/vaites/laravel-blade-expects.svg)](https://packagist.org/packages/vaites/laravel-blade-expects)
+[![License](https://img.shields.io/github/license/vaites/laravel-blade-expects.svg?color=%23999999)](https://github.com/vaites/laravel-blade-expects/blob/master/LICENSE)
+
 # Laravel Blade @expects
 
 **IMPORTANT**: this package is in its early stages and is not widely tested against all supported versions of PHP.
