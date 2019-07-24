@@ -94,6 +94,11 @@ you will need to add this to the service providers in `config/app.php`:
 ]
 ```
 
+## Requirements
+
+The only requirement is Laravel 5.5 or greater. The recommended version of PHP is 7.1 or greater but any version
+supported by Laravel will work.
+
 ## PhpStorm integration
 
 The PhpStorm IDE can recognize the custom Blade directive if is set in *File > Settings > Languages & Frameworks > PHP >
