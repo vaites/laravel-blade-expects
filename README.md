@@ -74,7 +74,16 @@ The directive is parsed like a closure to extract its parameters. The definition
 * The [type declaration](https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration)
 sets the required type and and exception is thrown if not matches (optional)
 
-This is translated in simple PHP conditionals placed in the compiled template.
+This is translated in simple PHP conditionals placed in the compiled template. 
+
+Exceptions thrown are:
+
+* `\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException`
+* `\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException`
+* `\Vaites\Laravel\BladeExpects\BladeExpectsWrokgClassException`
+
+All variables inherit from `\Vaites\Laravel\BladeExpects\BladeExpectsException` that inherits from 
+`InvalidArgumentException`.
 
 ## Installation
 

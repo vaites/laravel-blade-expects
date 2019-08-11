@@ -55,8 +55,9 @@ class BladeExpectsServiceProvider extends ServiceProvider
                 // without default value, is a required variable and throws an exception if not defined
                 if(is_null($param->default))
                 {
+                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException';
                     $message = "View expects $var variable to be defined";
-                    $compiled .= "if(!isset($var)){ throw new Exception('$message'); }\n";
+                    $compiled .= "if(!isset($var)){ throw new $exception('$message'); }\n";
                 }
                 // with a default value, sets the default value if variable is not set
                 else
@@ -68,16 +69,20 @@ class BladeExpectsServiceProvider extends ServiceProvider
                 // check a primary type
                 if($param->type instanceof Identifier)
                 {
+                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException';
+
                     $method = "is_{$param->type->name}";
-                    $message = "View \$view expects \\\${$name} variable to be {$param->type->name}";
-                    $compiled .= "if(!is_null($var) && !$method($var)){ throw new Exception(\"$message\"); }\n";
+                    $message = "View expects \\\${$name} variable to be {$param->type->name}";
+                    $compiled .= "if(!is_null($var) && !$method($var)){ throw new $exception(\"$message\"); }\n";
                 }
                 // check a class name
                 elseif($param->type instanceof Name)
                 {
+                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException';
+
                     $class = '\\' . implode('\\', $param->type->parts);
-                    $message = "View \$view expects \\\${$name} variable to be an instance of {$class}";
-                    $compiled .= "if(!is_null($var) && !$var instanceof $class){ throw new Exception(\"$message\"); }\n";
+                    $message = "View expects \\\${$name} variable to be an instance of {$class}";
+                    $compiled .= "if(!is_null($var) && !$var instanceof $class){ throw new $exception(\"$message\"); }\n";
                 }
             }
         }
