@@ -63,7 +63,7 @@ This will force `$object` to be defined as a `\App\Object` instance, `$type` as 
  *medium* value if not set. 
 
 **The goal is that any programmer who works with the template knows immediately which variables are necessary for 
-its , its types and default values.**
+its operation, its types and default values.**
 
 ## How it works
 
