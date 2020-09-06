@@ -61,6 +61,16 @@ define the variables expected by the view:
 
 This will force `$object` to be defined as a `\App\Object` instance, `$type` as a string and `$size` will take the
  *medium* value if not set. 
+ 
+The directive can be called using multiline syntax to improve legibility:
+ 
+```blade
+@expects(
+    \Very\Very\Very\Long\Namespace\Classes\FirstClass $class1, 
+    \Very\Very\Very\Long\Namespace\Classes\SecondClass $class2 
+    \Very\Very\Very\Long\Namespace\Classes\ThirdClass $class3 
+)
+``` 
 
 **The goal is that any programmer who works with the template knows immediately which variables are necessary for 
 its operation, its types and default values.**
@@ -69,7 +79,7 @@ its operation, its types and default values.**
 
 The directive is parsed like a closure to extract its parameters. The definition tells what to do:
 
-* If the parameter has no default value, the variable is required and an exception is thrown
+* If the parameter has no default value, the variable is required and an exception is thrown if is not defined
 * If the parameter has a default value, this value is set if not defined
 * The [type declaration](https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration)
 sets the required type and and exception is thrown if not matches (optional)
