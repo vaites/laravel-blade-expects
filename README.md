@@ -130,12 +130,12 @@ This is translated in simple PHP conditionals placed in the compiled template.
 
 Exceptions thrown are:
 
-* `\Vaites\Laravel\BladeExpects\BladeExpectsPhpTagsNotAllowedException`
-* `\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException`
-* `\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException`
-* `\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException`
+* `\Vaites\Laravel\BladeExpects\Exceptions\PhpTagsNotAllowedException`
+* `\Vaites\Laravel\BladeExpects\Exceptions\UndefinedVariableException`
+* `\Vaites\Laravel\BladeExpects\Exceptions\WrongTypeException`
+* `\Vaites\Laravel\BladeExpects\Exceptions\WrongClassException`
 
-All variables inherit from `\Vaites\Laravel\BladeExpects\BladeExpectsException` that inherits from 
+All variables inherit from `\Vaites\Laravel\BladeExpects\Exceptions\Exception` that inherits from 
 `InvalidArgumentException`.
 
 ## Requirements

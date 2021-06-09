@@ -31,6 +31,8 @@ use PhpParser\Node\Stmt\Nop;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 
+use Vaites\Laravel\BladeExpects\Exceptions\PhpTagsNotAllowedException;
+
 class BladeExpectsServiceProvider extends ServiceProvider
 {
     /**
@@ -85,7 +87,7 @@ class BladeExpectsServiceProvider extends ServiceProvider
     {
         if($this->phpTags === false && preg_match('/(<\?php|<\?=|@php)/', File::get($compiler->getPath())))
         {
-            throw new BladeExpectsPhpTagsNotAllowedException('PHP code is not allowed in Blade templates');
+            throw new PhpTagsNotAllowedException('PHP code is not allowed in Blade templates');
         }
 
         $closure = '/@expects\((.+)\)/Usi';
@@ -275,7 +277,7 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     protected function expectRequiredVariable(string $var): string
     {
-        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException';
+        $exception = \Vaites\Laravel\BladeExpects\Exceptions\UndefinedVariableException::class;
         $message = "View expects $var variable to be defined";
 
         return "if(!isset($var)){ throw new $exception('$message'); }\n";
@@ -313,7 +315,7 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     protected function expectType(string $var, string $type): string
     {
-        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException';
+        $exception = \Vaites\Laravel\BladeExpects\Exceptions\WrongTypeException::class;
 
         $method = "is_$type";
         $prep = preg_match('/^[aeiou]/', $type) ? 'an' : 'a';
@@ -327,7 +329,7 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     protected function expectClassInstance(string $var, string $class): string
     {
-        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException';
+        $exception = \Vaites\Laravel\BladeExpects\Exceptions\WrongClassException::class;
 
         $message = "View expects {$var} variable to be an instance of {$class}";
 
