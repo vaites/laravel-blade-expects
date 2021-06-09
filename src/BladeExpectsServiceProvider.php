@@ -34,14 +34,32 @@ use PhpParser\PrettyPrinter\Standard;
 class BladeExpectsServiceProvider extends ServiceProvider
 {
     /**
-     * PhpParser instance
+     * Is directive enabled?
+     *
+     * @var bool
      */
-    protected $parser;
+    protected $enabled = true;
+
+    /**
+     * Are PHP tags allowed?
+     *
+     * @var bool
+     */
+    protected $phpTags = true;
 
     /**
      * Variable types
+     *
+     * @var array|string[]
      */
     protected $types = ['array', 'int', 'float', 'string'];
+
+    /**
+     * PhpParser instance
+     *
+     * @var \PhpParser\Parser\Multiple
+     */
+    protected $parser;
 
     /**
      * Add the custom directive
@@ -50,6 +68,9 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        $this->enabled = env('BLADE_EXPECTS_ENABLED', true);
+        $this->phpTags = env('BLADE_EXPECTS_PHP_TAGS', true);
+
         $this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
 
         Blade::extend([$this, 'compile']);
@@ -62,10 +83,25 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     public function compile(string $code, BladeCompiler $compiler): string
     {
+        if($this->phpTags === false && preg_match('/(<\?php|<\?=|@php)/', File::get($compiler->getPath())))
+        {
+            throw new BladeExpectsPhpTagsNotAllowedException('PHP code is not allowed in Blade templates');
+        }
+
+        $closure = '/@expects\((.+)\)/Usi';
+        $docblock = '/@expects(.+)@endexpects/Usi';
+
         try
         {
-            $code = preg_replace_callback('/@expects\((.+)\)/Usi', [$this, 'generateCodeFromClosure'], $code);
-            $code = preg_replace_callback('/@expects(.+)@endexpects/Usi', [$this, 'generateCodeFromDocBlock'], $code);
+            if($this->enabled === true)
+            {
+                $code = preg_replace_callback($closure, [$this, 'generateCodeFromClosure'], $code);
+                $code = preg_replace_callback($docblock, [$this, 'generateCodeFromDocBlock'], $code);
+            }
+            else
+            {
+                $code = preg_replace($closure, '', preg_replace($docblock, '', $code));
+            }
         }
         catch(Error $exception)
         {

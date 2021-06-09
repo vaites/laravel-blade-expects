@@ -44,7 +44,9 @@ this template might ask:
 
 In big templates with lots of complex HTML code mixed with CSS framework classes and JS framework attributes, guessing 
 this information can be quite difficult. To solve these problems, this package adds a simple `@expects` directive to 
-define the variables expected by the view:
+define the variables expected by the view.
+
+## Usage
 
 ```blade
 @expects(\App\Object $object, string $type, string $size = 'medium')
@@ -102,6 +104,14 @@ The directive can be called using multiline syntax to improve legibility:
 **The goal is that any programmer who works with the template knows immediately which variables are necessary for 
 its operation, its types and default values.**
 
+### PHP tags
+
+You may also need to disable PHP tags in templates. This will prevent control structures from being used or variables 
+from being declared, forcing the use of Blade directives for everything the template should do.
+
+To do this just set the `BLADE_EXPECTS_PHP_TAGS` environment variable to `true` and and exception will be thrown if 
+`<?php` or `<?=` tags are detected.
+
 ## How it works
 
 The directive is parsed in two ways:
@@ -120,12 +130,18 @@ This is translated in simple PHP conditionals placed in the compiled template.
 
 Exceptions thrown are:
 
+* `\Vaites\Laravel\BladeExpects\BladeExpectsPhpTagsNotAllowedException`
 * `\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException`
 * `\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException`
-* `\Vaites\Laravel\BladeExpects\BladeExpectsWrokgClassException`
+* `\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException`
 
 All variables inherit from `\Vaites\Laravel\BladeExpects\BladeExpectsException` that inherits from 
 `InvalidArgumentException`.
+
+## Requirements
+
+* Laravel 5.5 or greater
+* PHP 7.2 or greater
 
 ## Installation
 
@@ -145,10 +161,12 @@ you will need to add this to the service providers in `config/app.php`:
 ]
 ```
 
-## Requirements
+## Configuration
 
-* Laravel 5.5 or greater
-* PHP 7.2 or greater
+The following environment variables can be defined:
+
+* `BLADE_EXPECTS_ENABLED`: boolean, enable or disable the directive (tags are stripped)
+* `BLADE_EXPECTS_PHP_TAGS`: boolean, enable or disable the use of PHP tags 
 
 ## PhpStorm integration
 
