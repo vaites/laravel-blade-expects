@@ -4,12 +4,12 @@
 
 # Laravel Blade @expects
 
-**IMPORTANT**: this package is in its early stages and is not widely tested against all supported versions of PHP.
-Please, use with caution...
+**IMPORTANT**: this package is in its early stages and is not widely tested against all supported versions of PHP or 
+Laravel. Please, use with caution...
 
 ## Motivation
 
-[Blade templates](https://laravel.com/docs/5.8/blade) are great, but lacks a good way to define the variables it 
+[Blade templates](https://laravel.com/docs/8.x/blade) are great, but lacks a good way to define the variables it 
 requires to work. In a normal template you must check if variables are set and/or set a default value for it. 
 
 Take this example:
@@ -48,7 +48,8 @@ define the variables expected by the view:
 
 ```blade
 @expects(\App\Object $object, string $type, string $size = 'medium')
-<div class="component component-{{ $type }}">
+
+<div class="component component-{{ $type ?: 'embedded' }}">
     @if($type == 'big')
         <h1 class="component-title">{{ $object->title }}</h1>
     @endif
@@ -59,30 +60,61 @@ define the variables expected by the view:
 </div>
 ```
 
-This will force `$object` to be defined as a `\App\Object` instance, `$type` as a string and `$size` will take the
+Using it as a wrapper for a phpDoc block does the same and allows IDEs like phpStorm to type-hint the variables:
+
+```blade
+@expects
+
+/**
+ * Let's define the variables and its types
+ *
+ * @var \App\Object $object Object description
+ * @var string|null $type   Type description
+ * @var string      $size   Size description (default: medium) 
+ */
+ 
+ @endexpects
+ 
+<div class="component component-{{ $type ?: 'embedded' }}">
+    @if($type == 'big')
+        <h1 class="component-title">{{ $object->title }}</h1>
+    @endif
+    
+    <div class="component-content component-content-{{ $size' }}">
+        {{ $object->content }}
+    </h1>
+</div>
+```
+
+Both ways force `$object` to be defined as a `\App\Object` instance, `$type` as a string and `$size` will take the
  *medium* value if not set. 
  
 The directive can be called using multiline syntax to improve legibility:
  
 ```blade
 @expects(
-    \Very\Very\Very\Long\Namespace\Classes\FirstClass $class1, 
-    \Very\Very\Very\Long\Namespace\Classes\SecondClass $class2 
-    \Very\Very\Very\Long\Namespace\Classes\ThirdClass $class3 
+    \Very\Very\Very\Long\Namespace\Classes\FirstClass  $class1, 
+    \Very\Very\Very\Long\Namespace\Classes\SecondClass $class2,
+    \Very\Very\Very\Long\Namespace\Classes\ThirdClass  $class3 
 )
-``` 
+```
 
 **The goal is that any programmer who works with the template knows immediately which variables are necessary for 
 its operation, its types and default values.**
 
 ## How it works
 
-The directive is parsed like a closure to extract its parameters. The definition tells what to do:
+The directive is parsed in two ways:
+
+* Like a closure to extract its parameters
+* Like a PHP block to parse wrapped phpDoc 
+
+The resulting definition tells what to do:
 
 * If the parameter has no default value, the variable is required and an exception is thrown if is not defined
 * If the parameter has a default value, this value is set if not defined
 * The [type declaration](https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration)
-sets the required type and and exception is thrown if not matches (optional)
+sets the required type and an exception is thrown if not matches (optional)
 
 This is translated in simple PHP conditionals placed in the compiled template. 
 
@@ -97,7 +129,7 @@ All variables inherit from `\Vaites\Laravel\BladeExpects\BladeExpectsException` 
 
 ## Installation
 
-Just install using `composer` and Laravel will load it automagically:
+Just install using `composer` and Laravel will load it _automagically_:
 
 ```bash
 composer require vaites/laravel-blade-expects

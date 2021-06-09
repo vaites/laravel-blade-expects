@@ -2,19 +2,47 @@
 
 namespace Vaites\Laravel\BladeExpects;
 
-use Blade;
+use File;
 use Exception;
 
+use UnexpectedValueException;
+
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\View\Compilers\BladeCompiler;
+
+use phpDocumentor\Reflection\DocBlockFactory;
+use phpDocumentor\Reflection\DocBlock\Tag;
+use phpDocumentor\Reflection\DocBlock\Tags\Param;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
+use phpDocumentor\Reflection\Types\Array_;
+use phpDocumentor\Reflection\Types\Compound;
+use phpDocumentor\Reflection\Types\Float_;
+use phpDocumentor\Reflection\Types\Integer;
+use phpDocumentor\Reflection\Types\Null_;
+use phpDocumentor\Reflection\Types\Object_;
+use phpDocumentor\Reflection\Types\String_;
 
 use PhpParser\Error;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\Nop;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 
 class BladeExpectsServiceProvider extends ServiceProvider
 {
+    /**
+     * PhpParser instance
+     */
+    protected $parser;
+
+    /**
+     * Variable types
+     */
+    protected $types = ['array', 'int', 'float', 'string'];
+
     /**
      * Add the custom directive
      *
@@ -22,76 +50,251 @@ class BladeExpectsServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        Blade::directive('expects', [$this, 'expects']);
+        $this->parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+
+        Blade::extend([$this, 'compile']);
     }
 
     /**
-     * Force the definition of the variables expected by a view and set its default values
+     * Parse the custom directive and replace the code
      *
-     * @param   array   $arguments
-     * @return  string
      * @throws  \Exception
      */
-    public function expects(string $definition): ?string
+    public function compile(string $code, BladeCompiler $compiler): string
     {
-        $compiled = null;
-
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
-
         try
         {
-            /* @var \PhpParser\Node\Expr\Closure */
-            /* @var \PhpParser\Node\Param $param */
-
-            // parses the code like a function that must receive parameters
-            $closure = head($parser->parse("<?php function({$definition}){}; ?>"))->expr;
-
-            // check each parameter
-            foreach($closure->params as $param)
-            {
-                $name = $param->var->name;
-                $var = "\${$param->var->name}";
-
-                // without default value, is a required variable and throws an exception if not defined
-                if(is_null($param->default))
-                {
-                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException';
-                    $message = "View expects $var variable to be defined";
-                    $compiled .= "if(!isset($var)){ throw new $exception('$message'); }\n";
-                }
-                // with a default value, sets the default value if variable is not set
-                else
-                {
-                    $default = (new Standard())->prettyPrintExpr($param->default);
-                    $compiled .= "if(!isset($var)) { $var = $default; }\n";
-                }
-
-                // check a primary type
-                if($param->type instanceof Identifier)
-                {
-                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException';
-
-                    $method = "is_{$param->type->name}";
-                    $message = "View expects \\\${$name} variable to be {$param->type->name}";
-                    $compiled .= "if(!is_null($var) && !$method($var)){ throw new $exception(\"$message\"); }\n";
-                }
-                // check a class name
-                elseif($param->type instanceof Name)
-                {
-                    $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException';
-
-                    $class = '\\' . implode('\\', $param->type->parts);
-                    $message = "View expects \\\${$name} variable to be an instance of {$class}";
-                    $compiled .= "if(!is_null($var) && !$var instanceof $class){ throw new $exception(\"$message\"); }\n";
-                }
-            }
+            $code = preg_replace_callback('/@expects\((.+)\)/Usi', [$this, 'generateCodeFromClosure'], $code);
+            $code = preg_replace_callback('/@expects(.+)@endexpects/Usi', [$this, 'generateCodeFromDocBlock'], $code);
         }
-        // a parse error is an invalid usage of the directive
         catch(Error $exception)
         {
+            // a parse error is an invalid usage of the directive
             throw new Exception("Invalid @expects usage (" . $exception->getMessage() . ")");
         }
 
-        return "<?php\n\n{$compiled}\n?>";
+        return $code;
+    }
+
+    /**
+     * Closure approach
+     */
+    protected function generateCodeFromClosure(array $matches): ?string
+    {
+        /* @var \PhpParser\Node\Param $param */
+
+        $compiled = null;
+
+        [$tag, $definition] = $matches;
+        $closure = head($this->parser->parse("<?php function({$definition}){}; ?>"))->expr;
+
+        foreach($closure->params as $param)
+        {
+            $var = "\${$param->var->name}";
+
+            if(is_null($param->default))
+            {
+                $compiled .= $this->expectRequiredVariable($var);
+            }
+            else
+            {
+                $default = isset($param->default->value) ? $param->default->value : null;
+                $compiled .= $this->expectOptionalVariable($var, $default);
+            }
+
+            if($param->type instanceof Identifier)
+            {
+                $compiled .= $this->expectType($var, $param->type->name);
+            }
+            elseif($param->type instanceof Name)
+            {
+                $compiled .= $this->expectClassInstance($var, '\\' . implode('\\', $param->type->parts));
+            }
+        }
+
+        return $compiled ? "<?php\n\n{$compiled}\n ?>" : null;
+    }
+
+    /**
+     * DocBlock approach
+     */
+    protected function generateCodeFromDocBlock(array $matches): ?string
+    {
+        /** @var \PhpParser\Node\Stmt\Nop $block */
+
+        $compiled = null;
+
+        [$tag, $definition] = $matches;
+
+        $docblock = DocBlockFactory::createInstance()->create($definition);
+
+        foreach($docblock->getTags() as $tag)
+        {
+            if($tag instanceof Param || $tag instanceof Var_)
+            {
+                $var = "\${$tag->getVariableName()}";
+
+                [$type, $default, $null] = $this->getDocBlockTagDefinition($tag);
+
+                if($null === false && $default === null)
+                {
+                    $compiled .= $this->expectRequiredVariable($var);
+                }
+                else
+                {
+                    $compiled .= $this->expectOptionalVariable($var, $default);
+                }
+
+                if($type !== null && in_array($type, $this->types))
+                {
+                    $compiled .= $this->expectType($var, $type);
+                }
+                elseif($type !== null)
+                {
+                    $compiled .= $this->expectClassInstance($var, $type);
+                }
+            }
+        }
+
+        return $compiled ? "<?php\n\n{$compiled}\n ?>" : null;
+    }
+
+    /**
+     * Get the type, default value and nullabillity of a phpDoc variable description
+     */
+    protected function getDocBlockTagDefinition(Tag $tag): array
+    {
+        $type = null;
+        $default = null;
+        $null = false;
+
+        $types = [];
+        if($tag->getType() instanceof Compound)
+        {
+            foreach($tag->getType() as $item)
+            {
+                $types[] = $item;
+            }
+        }
+        else
+        {
+            $types[] = $tag->getType();
+        }
+
+        foreach($types as $item)
+        {
+            if($item instanceof Object_)
+            {
+                $type = (string) $item;
+            }
+            elseif($item instanceof Array_)
+            {
+                $type = 'array';
+            }
+            elseif($item instanceof Float_)
+            {
+                $type = 'float';
+            }
+            elseif($item instanceof Integer)
+            {
+                $type = 'int';
+            }
+            elseif($item instanceof String_)
+            {
+                $type = 'string';
+            }
+            elseif($item instanceof Null_)
+            {
+                $null = true;
+            }
+        }
+
+        if($tag->getDescription() && preg_match('/\(default:(.+)\)/Ui', $tag->getDescription(), $match))
+        {
+            switch($type)
+            {
+                case 'array':
+                    $default = trim($match[1]);
+                    break;
+
+                case 'float':
+                    $default = (float) $match[1];
+                    break;
+
+                case 'int':
+                    $default = (int) $match[1];
+                    break;
+
+                case 'string':
+                    $default = trim($match[1]);
+                    break;
+            }
+        }
+
+        return [$type, $default, $null];
+    }
+
+    /**
+     * Generate the code to check a required variable
+     */
+    protected function expectRequiredVariable(string $var): string
+    {
+        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsUndefinedVariableException';
+        $message = "View expects $var variable to be defined";
+
+        return "if(!isset($var)){ throw new $exception('$message'); }\n";
+    }
+
+    /**
+     * Generate the code to define a variable with a default value
+     */
+    protected function expectOptionalVariable(string $var, $default = null): string
+    {
+        switch(true)
+        {
+            case is_float($default):
+            case is_int($default):
+                $value = $default;
+                break;
+
+            case is_null($default):
+                $value = 'null';
+                break;
+
+            case is_string($default):
+                $value = "'" . addslashes($default) . "'";
+                break;
+
+            default:
+                throw new UnexpectedValueException("$default is not a valid default value for $var");
+        }
+
+        return  "if(!isset($var)) { $var = $value; }\n";
+    }
+
+    /**
+     * Generate the code to verify the type of a variable
+     */
+    protected function expectType(string $var, string $type): string
+    {
+        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongTypeException';
+
+        $method = "is_$type";
+        $prep = preg_match('/^[aeiou]/', $type) ? 'an' : 'a';
+        $message = "View expects {$var} variable to be $prep $type instead of ";
+
+        return "if(!is_null($var) && !$method($var)){ throw new $exception('$message' . gettype($var)); }\n";
+    }
+
+    /**
+     * Generate the code to verify the class of an instance
+     */
+    protected function expectClassInstance(string $var, string $class): string
+    {
+        $exception = '\Vaites\Laravel\BladeExpects\BladeExpectsWrongClassException';
+
+        $message = "View expects {$var} variable to be an instance of {$class}";
+
+        return "if(!is_null($var) && !$var instanceof $class){ throw new $exception('$message'); }\n";
     }
 }
